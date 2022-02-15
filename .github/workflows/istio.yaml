@@ -1,0 +1,43 @@
+name: Set up Istio
+
+on:
+  push:
+    branches:
+    - main
+
+env:
+  EKS_CLUSTER: RPTestCluster #Here we have to enter the correct cluster name
+  EKS_REGION: us-east-1 #Here we have to change the region if max number of VPC allowed per region is 5 issue appears
+
+jobs:
+  Job1:
+    name: Setup Dev Istio  # a user-defined comment to understand the job to be perfomed.
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    # AWS Credentials
+    - uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }} #use this to github actions secrets
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }} #use this in github action secrets
+        aws-region: ${{ env.EKS_REGION }}
+
+    # Get the EKS credentials so we can deploy to the cluster
+    - run: |-
+        aws eks --region $EKS_REGION update-kubeconfig --name $EKS_CLUSTER
+        
+   
+   # Set up istio
+    - name: Set up Istio
+      run: |-
+       curl -L https://istio.io/downloadIstio | ISTIO_VERSION=1.7.3 sh -
+       cd istio-1.7.3
+       export PATH=$PWD/bin:$PATH
+       istioctl install --set profile=demo
+       cd ~
+       #kubectl label namespace default istio-injection=enabled 
+       kubectl label namespace default istio-injection=enabled --overwrite
+       
